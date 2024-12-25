@@ -2,7 +2,7 @@ import hashlib
 import random
 import string
 
-def generate_password_from_text(input_text, password_length=16):
+def generate_password_from_text(input_text, password_length):
     # Step 1: Hash the input text
     hashed_text = hashlib.sha256(input_text.encode()).hexdigest()
 
@@ -21,7 +21,19 @@ def generate_password_from_text(input_text, password_length=16):
 if __name__ == "__main__":
     # Get the input word
     input_text = input("Enter the word you want to convert into a password: ")
+    
+    # Ask for password length
+    while True:
+        try:
+            password_length = int(input("Enter the desired password length (minimum 16): "))
+            if password_length < 16:
+                print("Password length must be at least 16 characters. Please try again.")
+            else:
+                break
+        except ValueError:
+            print("Please enter a valid number.")
 
     # Generate and print the password
-    password = generate_password_from_text(input_text, password_length=16)  # Minimum length of 16 characters
+    password = generate_password_from_text(input_text, password_length)
     print(f"Generated Password: {password}")
+
