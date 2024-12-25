@@ -1,8 +1,10 @@
+import curses
 import hashlib
 import random
 import string
 
-def generate_password_from_text(input_text, password_length):
+def generate_password_from_text(input_text, password_length=16):
+    """Generates a deterministic password from the input text."""
     # Step 1: Hash the input text
     hashed_text = hashlib.sha256(input_text.encode()).hexdigest()
 
@@ -10,30 +12,62 @@ def generate_password_from_text(input_text, password_length):
     characters = string.ascii_letters + string.digits + "!@#$%^&*()"
 
     # Step 3: Create a password by selecting from the hashed characters
-    # Using the hash to select characters randomly but deterministically
     random.seed(hashed_text)  # Seed random with the hash to ensure reproducibility
-
-    # Ensure password is at least the specified length
     password = ''.join(random.choice(characters) for _ in range(password_length))
-
+    
     return password
 
-if __name__ == "__main__":
-    # Get the input word
-    input_text = input("Enter the word you want to convert into a password: ")
-    
-    # Ask for password length
+def curses_interface(stdscr):
+    """Curses-based interface to securely input text and select password length."""
+    curses.curs_set(0)  # Hide the cursor
+    stdscr.clear()
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+
+    stdscr.addstr(0, 0, "Password Generator (Use this tool to securely generate passwords)", curses.A_BOLD)
+    stdscr.addstr(2, 0, "Step 1: Enter a word or phrase to generate the password.")
+    stdscr.addstr(3, 0, "Step 2: Choose the password length.")
+    stdscr.addstr(4, 0, "Step 3: Generate and display the password securely.")
+    stdscr.addstr(6, 0, "Press ENTER to confirm, BACKSPACE to delete, and UP/DOWN to adjust length.")
+
+    input_text = []
+    password_length = 16
+    current_step = 0
+
     while True:
-        try:
-            password_length = int(input("Enter the desired password length (minimum 16): "))
-            if password_length < 16:
-                print("Password length must be at least 16 characters. Please try again.")
+        stdscr.clear()
+        stdscr.addstr(0, 0, "Password Generator", curses.A_BOLD)
+        
+        if current_step == 0:
+            stdscr.addstr(2, 0, "Enter your text (current: {}):".format("".join(input_text)), curses.A_BOLD)
+            stdscr.addstr(4, 0, "".join(input_text) + "_")
+        elif current_step == 1:
+            stdscr.addstr(2, 0, f"Select Password Length (current: {password_length}):", curses.A_BOLD)
+            stdscr.addstr(4, 0, "Use UP/DOWN to increase/decrease.")
+        elif current_step == 2:
+            stdscr.addstr(2, 0, "Generated Password:", curses.A_BOLD)
+            stdscr.addstr(4, 0, generate_password_from_text("".join(input_text), password_length), curses.color_pair(1))
+            stdscr.addstr(6, 0, "Press Q to quit or ENTER to restart.")
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == curses.KEY_BACKSPACE or key == 127:  # Handle BACKSPACE
+            if current_step == 0 and input_text:
+                input_text.pop()
+        elif key == curses.KEY_ENTER or key in [10, 13]:  # Handle ENTER
+            if current_step < 2:
+                current_step += 1
             else:
-                break
-        except ValueError:
-            print("Please enter a valid number.")
+                return  # Exit after showing the password
+        elif key == curses.KEY_UP and current_step == 1:  # Increase password length
+            password_length = min(password_length + 1, 64)
+        elif key == curses.KEY_DOWN and current_step == 1:  # Decrease password length
+            password_length = max(password_length - 1, 8)
+        elif key == ord('q') or key == ord('Q'):  # Quit
+            return
+        elif current_step == 0 and key in range(32, 127):  # Append printable characters
+            input_text.append(chr(key))
 
-    # Generate and print the password
-    password = generate_password_from_text(input_text, password_length)
-    print(f"Generated Password: {password}")
-
+if __name__ == "__main__":
+    curses.wrapper(curses_interface)
